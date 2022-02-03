@@ -1,0 +1,56 @@
+Resources:
+  DemoSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: "Demo Security Group"
+      SecurityGroupIngress:
+        -
+          IpProtocol: "tcp"
+          CidrIp: "0.0.0.0/0"
+          FromPort: 6379
+          ToPort: 6379
+  DemoUserPassword:
+    Type: AWS::SecretsManager::Secret
+    Properties:
+      GenerateSecretString:
+        ExcludePunctuation: true
+        PasswordLength: 128
+  DemoRedisUser:
+    Type: AWS::ElastiCache::User
+    Properties:
+      Engine: "redis"
+      AccessString: "on ~* -@all +@read +@write"
+      UserName: "demo-redis-user"
+      UserId: "demo-redis-user"
+      Passwords:
+        - !Sub '{{resolve:secretsmanager:${DemoUserPassword}:SecretString}}'
+  DisabledDefaultUser:
+    Type: AWS::ElastiCache::User
+    Properties:
+      NoPasswordRequired: true
+      Engine: "redis"
+      AccessString: "off ~* -@all"
+      UserName: "default" # Has to be 'default' to swap with the default user
+      UserId: "disabled-default-user" # Has to be different than 'deffault' to avoid conflicts, 'default' user still exists, it's swapped, not removed.
+  RedisUserGroup:
+    Type: AWS::ElastiCache::UserGroup
+    Properties:
+      Engine: "redis"
+      UserGroupId: "demo-redis-user-group"
+      UserIds:
+        - !Ref DemoRedisUser
+        - !Ref DisabledDefaultUser
+  DemoReplicationGroup:
+    Type: AWS::ElastiCache::ReplicationGroup
+    Properties:
+      Engine: "redis"
+      EngineVersion: "6.x" # For Redis 6 it can be 6.x for latest or specific version like 6.2
+      CacheNodeType: "cache.t3.micro"
+      ReplicationGroupDescription: "Demo Replication Group"
+      NumCacheClusters: 2
+      AutomaticFailoverEnabled: true
+      TransitEncryptionEnabled: true # Required for user group based access
+      SecurityGroupIds:
+        - !GetAtt DemoSecurityGroup.GroupId
+      UserGroupIds:
+        - !Ref RedisUserGroup
