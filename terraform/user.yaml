@@ -1,0 +1,24 @@
+Parameters:
+  UserName:
+    Type: String
+Resources:
+  DemoUserPassword:
+    Type: AWS::SecretsManager::Secret
+    Properties:
+      GenerateSecretString:
+        ExcludePunctuation: true
+        PasswordLength: 128
+  DemoRedisUser:
+    Type: AWS::ElastiCache::User
+    Properties:
+      Engine: "redis"
+      AccessString: "on ~* -@all +@read +@write"
+      UserName: !Ref UserName
+      UserId: !Ref UserName
+      Passwords:
+        - !Sub '{{resolve:secretsmanager:${DemoUserPassword}:SecretString}}'
+Outputs:
+  DemoRedisUserId:
+    Value: !Ref DemoRedisUser
+  DemoRedisUserPasswordArn:
+    Value: !Ref DemoUserPassword
