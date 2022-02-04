@@ -1,5 +1,6 @@
 import boto3
 import redis
+import certifi
 import os
 
 def handle(event, context):
@@ -12,6 +13,7 @@ def handle(event, context):
     client = redis.Redis(host=url,
                          port=port,
                          ssl=True,
+                         ssl_ca_certs=certifi.where(),
                          username=user,
                          password=user_pass)
     client.set('foo', 'bar')

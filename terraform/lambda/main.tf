@@ -26,10 +26,10 @@ resource "aws_iam_role" "lambda_role" {
   managed_policy_arns = ["arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole"]
 }
 
-resource "aws_lambda_layer_version" "redis_client" {
-  layer_name = "redis-client"
-  filename = "${path.module}/redis.zip"
-  source_code_hash = filebase64sha256("${path.module}/redis.zip")
+resource "aws_lambda_layer_version" "lib" {
+  layer_name = "lib"
+  filename = "${path.module}/lib.zip"
+  source_code_hash = filebase64sha256("${path.module}/lib.zip")
 }
 
 data "archive_file" "lambda_code" {
@@ -94,7 +94,7 @@ resource "aws_lambda_function" "demo_function" {
   role = aws_iam_role.lambda_role.arn
   handler = "main.handle"
   runtime = "python3.9"
-  layers = [aws_lambda_layer_version.redis_client.id]
+  layers = [aws_lambda_layer_version.lib.id]
   filename = data.archive_file.lambda_code.output_path
   source_code_hash = data.archive_file.lambda_code.output_base64sha256
   timeout = 60
