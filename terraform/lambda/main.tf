@@ -26,18 +26,6 @@ resource "aws_iam_role" "lambda_role" {
   managed_policy_arns = ["arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole"]
 }
 
-resource "aws_lambda_layer_version" "lib" {
-  layer_name = "lib"
-  filename = "${path.module}/lib.zip"
-  source_code_hash = filebase64sha256("${path.module}/lib.zip")
-}
-
-data "archive_file" "lambda_code" {
-  source_file = "${path.module}/main.py"
-  output_path = "${path.module}/lambda.zip"
-  type = "zip"
-}
-
 data "aws_vpc" "default" {
   default = true
 }
@@ -89,14 +77,17 @@ resource "aws_security_group" "lambda_security_group" {
   }
 }
 
+data "aws_ecr_repository" "lambda_repo" {
+  name = "redis-lambda-images"
+}
+
 resource "aws_lambda_function" "demo_function" {
   function_name = "redis-demo-lambda"
   role = aws_iam_role.lambda_role.arn
   handler = "main.handle"
   runtime = "python3.9"
-  layers = [aws_lambda_layer_version.lib.id]
-  filename = data.archive_file.lambda_code.output_path
-  source_code_hash = data.archive_file.lambda_code.output_base64sha256
+  image_uri = "${data.aws_ecr_repository.lambda_repo.repository_url}:latest"
+  package_type = "Image"
   timeout = 60
   memory_size = 512
   vpc_config {
